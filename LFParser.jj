@@ -1,0 +1,132 @@
+
+options {
+	STATIC = false ;
+}
+
+PARSER_BEGIN(LFParser)
+
+import java.util.ArrayList;
+class LFParser
+{
+	static public void main(String args[]) throws ParseException, TokenMgrError
+	{
+		LFParser parser = new LFParser(System.in);
+		//System.out.println(parser.formula());
+		ArrayList<Formula> list = parser.formulas();
+		for(Formula f: list)
+		{
+			//System.out.println(f);
+		}
+		Tableau t = new Tableau(list);
+		t.makeTableau();
+		t.print();
+	}
+
+}
+
+PARSER_END(LFParser)
+	
+SKIP : { " " | "\t" | "\n" | "\r" | "\r\n"}
+TOKEN : { < ALL : "all"> }
+TOKEN : { < EXIST : "exist"> }
+TOKEN : { < AND : "and"> }
+TOKEN : { < OR : "or"> }
+TOKEN : { < IFF : "iff"> }
+TOKEN : { < IMP : "imp"> }
+TOKEN : { < NOT : "not"> }
+TOKEN : { < LPAREN : "("> }
+TOKEN : { < RPAREN : ")"> }
+TOKEN : { < COMMA: ","> }
+TOKEN : { < IDENT : (["A"-"Z"] | ["a"-"z"])+ >    }
+
+ArrayList<Formula> formulas():
+{
+Formula f;
+ArrayList<Formula> list = new ArrayList<Formula>();
+}
+{
+	f = formula() {list.add(f);} (<COMMA> f=formula() {list.add(f);})*<EOF>
+	{return list;}
+}
+
+Formula formula():
+{Formula f;}
+{
+	f = iffformula()
+	{return f;}
+}
+
+Formula iffformula():
+{
+Formula op1;
+Formula op2;
+}
+{
+	op1=impformula() (<IFF> op2=impformula(){op1=new IffFormula(op1, op2);})*
+	{return op1;}
+}
+
+Formula impformula():
+{
+Formula op1;
+Formula op2;
+}
+{
+	op1=orformula() (<IMP> op2=orformula(){op1=new ImpFormula(op1, op2);})*
+	{return op1;}
+}
+
+Formula orformula():
+{
+Formula op1;
+Formula op2;
+}
+{
+	//op1=andformula() <OR> op2=andformula() {return new OrFormula(op1, op2);}	
+	op1=andformula() (<OR> op2=andformula(){op1=new OrFormula(op1, op2);})*
+	{return op1;}
+}
+
+Formula andformula():
+{
+Formula op1;
+Formula op2;
+}
+{
+	//op1=proposition() <AND> op2=proposition() {return new AndFormula(op1, op2);}	
+	op1=notformula() (<AND> op2=notformula(){op1=new AndFormula(op1, op2);})*
+	{return op1;}
+}
+
+Formula notformula():
+{
+Formula f;
+}
+{
+	<NOT> f=quantifier() {return new NotFormula(f);} |
+	f=quantifier() { return f;}
+}
+
+Formula quantifier():
+{
+Formula f;
+Token t;
+}
+{
+	<ALL> t=<IDENT> f=proposition() { return new AllFormula(t.image, f);} |
+	<EXIST> t=<IDENT> f=proposition() { return new ExistFormula(t.image, f);} |
+	f = proposition() { return f;}
+}
+
+Formula proposition():
+{
+Token t;
+Token s;
+Formula f;
+ArrayList<String> list = new ArrayList<String>();
+}
+{
+	<LPAREN> f = formula() <RPAREN> { return f; } |
+	LOOKAHEAD(2) t = <IDENT> <LPAREN> s=<IDENT>{list.add(s.image);}(<COMMA> s=<IDENT>{list.add(s.image);})*<RPAREN>{return new Predicate(t.image, list);} |
+	t = <IDENT> { return new Proposition(t.image); }
+}

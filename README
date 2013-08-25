@@ -1,0 +1,75 @@
+論理式を解析し、矛盾しているかどうかを判定するツールです。
+意味論的タブローというアルゴリズムを使っています。
+
+使い方:
+Java用のパーサージェネレーターjavaccが必要です。
+http://javacc.java.net/
+
+まずパーサーのコードを生成します。
+javacc LFParser.jj
+これで.javaファイルが色々できますので、JFParser.javaを普通にコンパイルします。
+javac JFParser.java
+LFParserは標準入力から論理式を読み込みます。
+A→B
+A
+¬B
+という3つの論理式を読み込んでみます。
+$echo "A imp B, A, not B" | java LFParser
+A→B,A,¬B
+	¬A...contradiction!
+	B...contradiction!
+「AならばB」、「A」、「Bでない」の三つが同時に成り立つことはありませんので、この論理式の集合は矛盾しています。
+このような場合、LFParserが出力するタブローのすべてのノードには「contradiction!」という印がついています。
+矛盾していない場合について見てみましょう。
+$echo "A imp B, not A, not B" | java LFParser
+A→B,¬A,¬B
+	¬A
+	B...contradiction!
+¬Aのノードは「contradiction!」になっていません。
+量化を使った論理式を解析することもできます。
+$echo "all x P(x) and exist y (not P(y))" | java LFParser
+∀xP(x)∧∃y¬P(y)
+	∀xP(x),∃y¬P(y)
+		¬P(a)
+			P(a)...contradiction!
+すべてのxについてP(x)が成り立ち、あるyについてP(y)が成り立たないのは矛盾しています。
+
+使える論理記号の一覧:
+and	かつ
+or	または
+not	否定
+imp	含意
+iff	同値
+all	すべての
+exist	ある
+
+戸田山和久著『論理学をつくる』の187ページの練習問題57(11)を解いてみます。
+・愛の教団のすべての教徒は、自分を愛さない者すべてを愛する
+・愛の教団のすべての教徒は、自分を愛さない者だけを愛する
+このような教義をもつ愛の教団の存在が矛盾していることを確認します。
+
+$echo "all x(P(x) imp all y(not L(y, y) imp L(x, y))), all x(P(x) imp all y(L(x, y) imp (not L(y, y)))), exist x P(x)" | java LFParser
+∀x(P(x)→∀y(¬L(y,y)→L(x,y))),∀x(P(x)→∀y(L(x,y)→¬L(y,y))),∃xP(x)
+	P(a)
+		P(a)→∀y(¬L(y,y)→L(a,y))
+			P(a)→∀y(L(a,y)→¬L(y,y))
+				¬P(a)...contradiction!
+				∀y(¬L(y,y)→L(a,y))
+					¬P(a)...contradiction!
+					∀y(L(a,y)→¬L(y,y))
+						¬L(a,a)→L(a,a)
+							L(a,a)→¬L(a,a)
+								¬¬L(a,a)
+									¬L(a,a)
+										L(a,a)...contradiction!
+									¬L(a,a)
+										L(a,a)...contradiction!
+								L(a,a)
+									¬L(a,a)...contradiction!
+									¬L(a,a)...contradiction!
+
+すべての論理式が矛盾しているかどうかを判定できるわけではありません。
+$echo "all x (exist y P(x, y))" | java LFParser
+これを実行してみるといつまでたっても結果が表示されません。そのうちメモリを食い尽くしてエラーが出ると思います。
+これは決してバグではありません！今、貴方はコンピュータの本質的限界に直面しています。
+多重に量化された論理式が矛盾しているかどうかを判定するアルゴリズムは存在しません。すべての一階の述語論理の論理式が矛盾しているかどうか判定するアルゴリズムが存在すると仮定すると、チューリングの停止問題が解けちゃったりしてコンピューターサイエンスが根底からひっくり返ります。
