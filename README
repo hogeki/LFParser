@@ -7,8 +7,8 @@ http://javacc.java.net/
 
 まずパーサーのコードを生成します。
 javacc LFParser.jj
-これで.javaファイルが色々できますので、JFParser.javaを普通にコンパイルします。
-javac JFParser.java
+これで.javaファイルが色々できますので、LFParser.javaを普通にコンパイルします。
+javac LFParser.java
 LFParserは標準入力から論理式を読み込みます。
 A→B
 A
